@@ -93,7 +93,41 @@ class DataPreprocessor:
         # Convert month column to datetime
         self.data['gpr']['Date'] = pd.to_datetime(self.data['gpr']['month'], format='%d-%m-%Y')
         
+        # Load ECB Interest Rate data if available
+        self.load_ecb_rate_data()
+        
         logging.info("All data files loaded successfully")
+
+    def load_ecb_rate_data(self) -> None:
+        """Load ECB interest rate data from ECBDFR.csv if available."""
+        ecb_rates_path = os.path.join(self.raw_data_path, 'ECBDFR.csv')
+        
+        if os.path.exists(ecb_rates_path):
+            logging.info("Loading ECB interest rate data...")
+            
+            # Load the data
+            ecb_rates_df = pd.read_csv(ecb_rates_path)
+            
+            # Check if required columns exist
+            if 'observation_date' in ecb_rates_df.columns and 'ECBDFR' in ecb_rates_df.columns:
+                # Ensure date column is in datetime format
+                ecb_rates_df['observation_date'] = pd.to_datetime(ecb_rates_df['observation_date'])
+                
+                # Rename columns for consistency
+                ecb_rates_df = ecb_rates_df.rename(columns={
+                    'observation_date': 'Dates',
+                    'ECBDFR': 'ECB_rate_actual'
+                })
+                
+                # Store in data dictionary
+                self.data['ecb_rates'] = ecb_rates_df
+                
+                logging.info(f"Loaded ECB rates data with {len(ecb_rates_df)} rows")
+                logging.info(f"Date range in ECB data: {ecb_rates_df['Dates'].min()} to {ecb_rates_df['Dates'].max()}")
+            else:
+                logging.warning("ECB interest rate data file missing required columns. Skipping.")
+        else:
+            logging.warning(f"ECB interest rate data file not found at {ecb_rates_path}. Skipping.")
 
     def validate_data(self) -> None:
         """Validate data formats and types before processing."""
@@ -115,6 +149,11 @@ class DataPreprocessor:
                 required_cols = ['Dates', 'Fed_Fund_Rate']
             elif dataset_name == 'gpr':
                 required_cols = ['Date', 'GPR', 'GPRC_DEU', 'GPRHC_USA']
+            elif dataset_name == 'ecb_rates':
+                required_cols = ['Dates', 'ECB_rate_actual']
+            else:
+                # For any other dataset, skip validation
+                continue
             
             logging.info(f"Required columns for {dataset_name}: {required_cols}")
             
@@ -348,6 +387,55 @@ class DataPreprocessor:
         self.data['macro'] = macro_df
         logging.info("Data normalization completed")
 
+    def create_ecb_rate_features(self, final_df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Create additional features from the ECB interest rate data.
+        
+        Parameters:
+        -----------
+        final_df : pd.DataFrame
+            The combined dataframe with all datasets
+            
+        Returns:
+        --------
+        pd.DataFrame
+            The dataframe with added ECB rate features
+        """
+        if 'ecb_rates' not in self.data:
+            logging.warning("ECB interest rate data not available. Skipping ECB rate feature creation.")
+            return final_df
+            
+        logging.info("Creating ECB interest rate features...")
+        
+        # Merge the ECB rates data with the final dataframe
+        merged_df = pd.merge_asof(
+            final_df,
+            self.data['ecb_rates'],
+            on='Dates',
+            direction='backward'
+        )
+        
+        # Create lag features for ECB actual rates (for use as predictors)
+        for lag in range(1, 6):
+            merged_df[f'ECB_rate_actual_lag_{lag}'] = merged_df['ECB_rate_actual'].shift(lag)
+        
+        # Create a feature for the difference between actual and futures rates
+        merged_df['ECB_actual_futures_diff'] = merged_df['ECB_rate_actual'] - merged_df['ECBRateFutures']
+        
+        # Create a feature for rate changes and trend
+        merged_df['ECB_rate_actual_change'] = merged_df['ECB_rate_actual'].diff()
+        merged_df['ECB_rate_actual_trend'] = np.sign(merged_df['ECB_rate_actual'].diff().rolling(window=3).sum())
+        
+        logging.info("ECB interest rate features created successfully")
+        
+        # Display summary statistics for verification
+        logging.info("Summary of ECB rate data:")
+        logging.info(f"Min: {merged_df['ECB_rate_actual'].min()}")
+        logging.info(f"Max: {merged_df['ECB_rate_actual'].max()}")
+        logging.info(f"Mean: {merged_df['ECB_rate_actual'].mean()}")
+        
+        return merged_df
+
     def combine_datasets(self) -> pd.DataFrame:
         """Combine all processed datasets into a single DataFrame using time-based alignment."""
         logging.info("Combining datasets...")
@@ -403,14 +491,30 @@ class DataPreprocessor:
         # Create target variable (ECB rate changes)
         final_df['ECB_rate_change'] = final_df['ECBRateFutures'].diff()
         
+        # Add ECB interest rate features if available
+        final_df = self.create_ecb_rate_features(final_df)
+        
         # Drop rows with missing values
         final_df.dropna(inplace=True)
         
-        logging.info("Datasets combined successfully")
+        logging.info(f"Datasets combined successfully with {len(final_df)} rows")
         return final_df
 
     def save_processed_data(self, df: pd.DataFrame) -> None:
         """Save the processed dataset to CSV file."""
+        # Create a backup of any existing processed data
+        if os.path.exists(os.path.join(self.processed_data_path, 'processed_data.csv')):
+            backup_path = os.path.join(
+                self.processed_data_path, 
+                f'processed_data_backup_{datetime.now().strftime("%Y%m%d")}.csv'
+            )
+            os.rename(
+                os.path.join(self.processed_data_path, 'processed_data.csv'),
+                backup_path
+            )
+            logging.info(f"Created backup of previous processed data at {backup_path}")
+        
+        # Save the new processed data
         output_path = os.path.join(self.processed_data_path, 'processed_data.csv')
         df.to_csv(output_path, index=False)
         logging.info(f"Processed data saved to {output_path}")
