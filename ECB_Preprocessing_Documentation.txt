@@ -1,0 +1,113 @@
+# ECB Interest Rate Policy Prediction Preprocessing Pipeline
+
+This document provides a detailed explanation of the ECB Meeting Preprocessor, a Python class designed to prepare data for predicting the European Central Bank's interest rate policy decisions.
+
+## Overview
+
+The preprocessor implements a specialized pipeline that organizes economic and financial data around the ECB's 6-week meeting schedule. This approach better reflects the actual policy-making process, as the ECB makes monetary policy decisions at regular meetings rather than at fixed calendar intervals.
+
+## Data Sources
+
+The pipeline handles multiple data sources:
+
+1. **Macro Data**: Economic indicators like GDP, inflation (CPI), retail sales, industrial production, and money supply figures.
+2. **Market Data**: Financial market data such as the EuroStoxx 50 index and EUR/USD exchange rates.
+3. **Bond Yields**: German government bond yields at different maturities (1Y, 2Y, 5Y, 10Y).
+4. **Oil Prices**: Brent crude oil prices.
+5. **Fed Funds Rate**: U.S. Federal Reserve interest rate data.
+6. **GPR Data**: Geopolitical Risk indicator data.
+7. **ECB Interest Rates**: Historical European Central Bank interest rate decisions.
+
+## Pipeline Workflow
+
+The pipeline executes the following sequence of operations:
+
+### 1. Data Loading
+- Reads CSV files from the Raw_Data directory
+- Converts date columns to datetime format
+- Standardizes column names for consistency
+- Constructs a 6-week ECB meeting schedule based on actual rate change dates
+
+### 2. Missing Data Handling
+- Uses forward-fill (ffill) for all datasets to handle gaps
+- Applies cubic interpolation for monthly data (macro, fed, gpr)
+- Uses linear interpolation for daily data (market, bond yields, oil)
+- Backward-fills (bfill) any remaining missing values
+
+### 3. Feature Engineering
+
+#### Yield Curve Features:
+- Calculates yield curve slopes (10Y-2Y, 5Y-1Y)
+- Computes yield curve curvature (2×5Y - (2Y+10Y))
+- Measures yield volatility using 30-day rolling standard deviation
+
+#### Economic Indicators:
+- Calculates year-over-year percentage changes for key metrics
+- Creates 3-month and 6-month momentum indicators for GDP, inflation, and core CPI
+
+#### Market Indicators:
+- Computes returns and volatility for equity markets
+- Measures exchange rate volatility
+- Calculates oil price changes and volatility
+
+#### Policy Indicators:
+- Computes the spread between Fed Funds Rate and ECB rate at each meeting
+- Identifies the rate changes that occurred at each meeting
+
+### 4. Data Aggregation by Meeting Interval
+- Divides the timeline into 6-week intervals between consecutive ECB meetings
+- For each interval, calculates:
+  - Statistical measures (mean, min, max, std) for numeric features
+  - End-of-period values for rate-related metrics
+- Records the target variable: the interest rate change at the next meeting
+
+### 5. Data Cleaning
+- Replaces infinite values with NaN
+- Handles outliers by capping values at ±5 standard deviations from the mean
+- Fills remaining NaN values with column medians
+- Removes problematic columns that cannot be fixed
+
+### 6. Data Normalization
+- Normalizes all feature columns (except dates and the target variable)
+- Uses StandardScaler to transform features to have zero mean and unit variance
+
+### 7. Data Storage
+- Saves the final processed dataset as a CSV file
+- Implements error handling with backup saves in case of failure
+
+## Methodology Details
+
+### ECB Meeting Schedule Construction
+The script constructs a consistent 6-week meeting schedule. If ECB rate data is available, it identifies the first actual rate change date as the starting point. Otherwise, it uses February 4, 2000, as a default starting point. It then generates meetings at exact 6-week (42-day) intervals.
+
+### Rate Change Identification
+For each meeting interval, the script determines if a rate change occurred and calculates its magnitude. This becomes the target variable for prediction models.
+
+### Dataset Combination
+The script combines all datasets using pandas' merge_asof function, which performs time-based alignment. This ensures that only data that would have been available at each point in time is used (avoiding look-ahead bias).
+
+### Feature Aggregation Strategy
+For each 6-week meeting interval, the script calculates:
+- Statistical summaries (mean, min, max, standard deviation) for all numeric features
+- For rate-related features (interest rates, yields, inflation, GDP), it captures the end-of-period value, which might be more relevant for policy decisions
+
+## Output
+
+The final output is a CSV file containing:
+- One row per ECB meeting interval
+- Date identifiers (meeting date, interval start/end)
+- The target variable (Next_Rate_Change)
+- Normalized feature columns for all economic and financial indicators
+
+## Technical Implementation
+
+The implementation follows a modular design with separate methods for each preprocessing step. It uses proper error handling, logging, and defensive programming techniques. All warnings are suppressed to maintain clean output.
+
+Key Python libraries utilized:
+- pandas: For data manipulation and time series handling
+- numpy: For numerical operations
+- sklearn.preprocessing: For data normalization
+- datetime: For date manipulation
+- logging: For process tracking and debugging
+
+The code is structured as a reusable class that can be integrated into larger machine learning workflows for ECB interest rate prediction. 
