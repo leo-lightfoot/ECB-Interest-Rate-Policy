@@ -1,0 +1,201 @@
+Feature,Importance
+1Y_volatility_mean,0.1797941448328883
+CPI_Inflation_YoY_end,0.11484175683436755
+Retail_Sales_YoY_std,0.10733730174321908
+Oil_returns_mean,0.0958289349032346
+Oil_returns_max,0.07913792961744748
+GPR_max,0.02569394969511838
+Two_Meetings_Ago_Decision,0.022469323769567385
+GPRC_DEU_max,0.020257597051750533
+2Y_mean,0.018675249464594944
+2Y_max,0.01747161826145927
+Core_CPI_std,0.01689437000947354
+GPRC_DEU_std,0.016823027951732697
+Core_CPI_3m_change_max,0.015786043703217886
+Core_CPI_3m_change_mean,0.010196602017552084
+Core_CPI_6m_change_min,0.009929259905605396
+GPRHC_USA_max,0.007894408722715456
+Core_CPI_6m_change_max,0.007142030271238124
+10Y_volatility_std,0.006797734678368051
+CPI_Inflation_YoY_YoY_min,0.006703259036421418
+CPI_Inflation_YoY_6m_change_min,0.006296055766326728
+Core_CPI_3m_change_min,0.005536594666395083
+Eurozone GDP Growth_YoY_min,0.005424279334145351
+Eurozone GDP Growth_YoY_mean,0.00521565320590899
+5Y_volatility_std,0.005132202754614448
+Eurozone_Unemployment_max,0.005094310807513156
+CPI_Inflation_YoY_YoY_end,0.004943842059651618
+M3_Money_Supply_mean,0.004920828189467209
+M3_Money_Supply_std,0.004859250236838543
+Brent Oil Price_max,0.004788624409208215
+curvature_std,0.00452023277845446
+M3_Money_Supply_max,0.0041705429558037636
+M3_Money_Supply_YoY_mean,0.004158614156178103
+Brent Oil Price_std,0.004065387164655501
+Retail_Sales_YoY_mean,0.003774394370009473
+2Y_std,0.003647789764126927
+EURUSD Exchange rate_min,0.0036318603280432057
+Core_CPI_3m_change_std,0.0036161862227635675
+M3_Money_Supply_min,0.003439579383679222
+GPR_std,0.003338018051781755
+Core_CPI_mean,0.003255228902577242
+Core_CPI_max,0.003206321486613172
+Eurozone_Unemployment_mean,0.0031957664862814813
+5Y_min,0.003138699227597886
+2Y_min,0.0030762695297815246
+Eurozone GDP Growth_YoY_end,0.0030511571254567605
+ECBRateFutures_end,0.002863380538231496
+Industrial_Production_YoY_std,0.0026686758903567663
+1Y_min,0.002636802454098449
+Core_CPI_min,0.0025355328279883303
+10Y_volatility_max,0.002350521044796319
+ECBRateFutures_mean,0.00234008320247823
+GPR_mean,0.002339710713660545
+Core_CPI_6m_change_mean,0.0023279198809040467
+Industrial_Production_max,0.002252789696134999
+EuroStoxx_volatility_mean,0.0022462079806781386
+slope_10y_2y_std,0.002237515225334957
+Retail_Sales_YoY_min,0.0021471105697658684
+Industrial_Production_YoY_min,0.0021471105697658684
+CPI_Inflation_YoY_std,0.0019663012586276897
+10Y_mean,0.0019335849463577753
+Eurozone_Unemployment_min,0.001932970198548547
+ECBRateFutures_min,0.0018988571839560183
+Eurozone GDP Growth_YoY_max,0.0018776351541272363
+Eurozone GDP Growth_3m_change_mean,0.0018776351541272363
+EuroStoxx_volatility_max,0.0018758966030586006
+Industrial_Production_YoY_mean,0.0017037800472636034
+EURUSD Exchange rate_std,0.0016950872919204224
+M3_Money_Supply_YoY_std,0.0015368791446745162
+Retail_Sales_YoY_max,0.0015299249403999708
+CPI_Inflation_YoY_6m_change_std,0.0015299249403999708
+M3_Money_Supply_YoY_min,0.001446474489105427
+1Y_volatility_max,0.0014238733252131548
+Industrial_Production_std,0.0014169191209386096
+Eurozone GDP Growth_6m_change_min,0.001356069833536338
+Industrial_Production_mean,0.001356069833536338
+Political_Risk_Avg,0.0012621815399237058
+Eurozone GDP Growth_mean,0.0012517567694181576
+10Y_min,0.0012510117917827867
+curvature_max,0.0012430640140749765
+CPI_Inflation_YoY_3m_change_max,0.0011683063181236139
+CPI_Inflation_YoY_3m_change_end,0.0011683063181236139
+EURUSD Exchange rate_end,0.0011679338293059285
+slope_10y_2y_min,0.001130058194613615
+Brent Oil Price_mean,0.0010886989218777585
+EuroStoxx_volatility_min,0.0010848558668290701
+10Y_volatility_min,0.0010848558668290701
+GPRHC_USA_std,0.0010848558668290701
+Oil_returns_std,0.0010779016625545247
+EuroStoxx_returns_std,0.0010779016625545247
+EuroStoxx 50 (Equity Markets)_mean,0.0010779016625545247
+EuroStoxx_returns_min,0.0010779016625545247
+Core_CPI_6m_change_std,0.000994451211259981
+10Y_volatility_mean,0.000994451211259981
+Inflation_Indicators_Avg,0.000994451211259981
+slope_5y_1y_mean,0.0009040465556908919
+CPI_Inflation_YoY_min,0.0009040465556908919
+EuroStoxx 50 (Equity Markets)_std,0.0009040465556908919
+Eurozone GDP Growth_3m_change_end,0.0009040465556908919
+GPRC_DEU_min,0.0009040465556908919
+CPI_Inflation_YoY_6m_change_mean,0.0008814453917986195
+5Y_volatility_mean,0.0008814453917986195
+CPI_Inflation_YoY_6m_change_max,0.0008814453917986195
+2Y_volatility_mean,0.0007910407362295305
+Oil_volatility_max,0.0007910407362295305
+EuroStoxx 50 (Equity Markets)_min,0.0007910407362295305
+curvature_mean,0.0007910407362295305
+Core_CPI_YoY_min,0.0007910407362295305
+1Y_volatility_std,0.0007910407362295305
+GPR_min,0.000678034916768169
+5Y_mean,0.0006366756440323125
+Eurozone GDP Growth_3m_change_max,0.0006258783847090788
+2Y_volatility_std,0.0006258783847090788
+EURUSD_volatility_mean,0.0006258783847090788
+EURUSD Exchange rate_mean,0.0006255058958913933
+GPRHC_USA_mean,0.0006255058958913933
+Retail_Sales_std,0.0005424279334145351
+Eurozone GDP Growth_6m_change_std,0.0005424279334145351
+EuroStoxx_returns_max,0.00045202327784544594
+2Y_volatility_max,0.00045202327784544594
+Fed_Fund_Rate_std,0.00045202327784544594
+GPRC_DEU_mean,0.00045202327784544594
+1Y_volatility_min,0.00045202327784544594
+ECB_rate_actual_max,0.00045202327784544594
+rate_change_mean,0.00045202327784544594
+Previous_Rate_Decision,0.00045202327784544594
+EURUSD Exchange rate_max,0.00045202327784544594
+slope_10y_2y_max,0.00045202327784544594
+Industrial_Production_YoY_max,0.00045202327784544594
+Eurozone GDP Growth_YoY_std,0.00045202327784544594
+5Y_max,0.00045202327784544594
+Core_CPI_YoY_mean,0.00045202327784544594
+CPI_Inflation_YoY_YoY_std,0.00045202327784544594
+CPI_Inflation_YoY_max,0.00045202327784544594
+10Y_max,0.00045202327784544594
+10Y_std,0.00045202327784544594
+EURUSD_volatility_min,0.00045202327784544594
+Fed_Fund_Rate_max,0.0003390174583840845
+5Y_volatility_max,0.0003390174583840845
+ECBRateFutures_std,0.0003390174583840845
+Oil_volatility_std,0.0003390174583840845
+Oil_returns_min,0.0003390174583840845
+Brent Oil Price_min,0.0003390174583840845
+slope_5y_1y_max,0.0003390174583840845
+slope_5y_1y_std,0.0003390174583840845
+EuroStoxx_volatility_std,0.0003390174583840845
+slope_10y_2y_mean,0.0003390174583840845
+Eurozone GDP Growth_max,0.0003390174583840845
+5Y_std,0.0003390174583840845
+CPI_Inflation_YoY_mean,0.0
+ECB_rate_actual_std,0.0
+Eurozone GDP Growth_6m_change_max,0.0
+Core_CPI_YoY_std,0.0
+ECBRateFutures_max,0.0
+CPI_Inflation_YoY_YoY_max,0.0
+GPRHC_USA_min,0.0
+Eurozone GDP Growth_6m_change_mean,0.0
+Eurozone GDP Growth_3m_change_std,0.0
+ECB_rate_actual_mean,0.0
+ECB_rate_actual_min,0.0
+Eurozone GDP Growth_3m_change_min,0.0
+ECB_rate_actual_end,0.0
+CPI_Inflation_YoY_3m_change_mean,0.0
+slope_5y_1y_min,0.0
+rate_change_min,0.0
+rate_change_max,0.0
+rate_change_std,0.0
+rate_change_end,0.0
+Interval_Length,0.0
+Market_Volatility_Avg,0.0
+1Y_std,0.0
+Yield_Curve_Status,0.0
+M3_Money_Supply_YoY_max,0.0
+Core_CPI_YoY_max,0.0
+Eurozone GDP Growth_6m_change_end,0.0
+CPI_Inflation_YoY_3m_change_min,0.0
+5Y_volatility_min,0.0
+curvature_min,0.0
+Eurozone GDP Growth_end,0.0
+Eurozone GDP Growth_std,0.0
+1Y_max,0.0
+2Y_volatility_min,0.0
+Eurozone_Unemployment_std,0.0
+Industrial_Production_min,0.0
+Eurozone GDP Growth_min,0.0
+Retail_Sales_mean,0.0
+Retail_Sales_min,0.0
+EuroStoxx_returns_mean,0.0
+Retail_Sales_max,0.0
+CPI_Inflation_YoY_3m_change_std,0.0
+CPI_Inflation_YoY_6m_change_end,0.0
+Oil_volatility_mean,0.0
+Oil_volatility_min,0.0
+EURUSD_volatility_std,0.0
+Fed_Fund_Rate_mean,0.0
+Fed_Fund_Rate_min,0.0
+EURUSD_volatility_max,0.0
+CPI_Inflation_YoY_YoY_mean,0.0
+Fed_Fund_Rate_end,0.0
+EuroStoxx 50 (Equity Markets)_max,0.0
+1Y_mean,0.0

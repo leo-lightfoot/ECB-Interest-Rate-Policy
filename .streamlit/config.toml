@@ -1,0 +1,20 @@
+[theme]
+primaryColor = "#1a5276"
+backgroundColor = "#f8f9fa"
+secondaryBackgroundColor = "#e9ecef"
+textColor = "#343a40"
+font = "sans serif"
+
+[server]
+maxUploadSize = 50
+enableCORS = true
+enableXsrfProtection = true
+
+[browser]
+gatherUsageStats = false
+
+[global]
+developmentMode = false
+
+[deprecation]
+showPyplotGlobalUse = false 
