@@ -1,11 +1,13 @@
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import StandardScaler, MinMaxScaler
-from datetime import datetime
+from sklearn.preprocessing import StandardScaler
+from datetime import datetime, timedelta
 import os
 import logging
-from typing import Dict, List, Tuple
+from typing import List, Tuple
 import warnings
+
+# Suppress all warnings
 warnings.filterwarnings('ignore')
 
 # Set up logging
@@ -13,22 +15,23 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('preprocessing.log'),
+        logging.FileHandler('ecb_preprocessing.log'),
         logging.StreamHandler()
     ]
 )
 
-class DataPreprocessor:
+class ECBMeetingPreprocessor:
     """
-    A comprehensive data preprocessing pipeline for ECB interest rate policy prediction.
+    A data preprocessing pipeline for ECB interest rate policy prediction,
+    organized around the 6-week ECB meeting schedule.
     
-    This class handles loading, cleaning, feature engineering, and normalization of various 
-    economic and financial datasets to prepare them for machine learning models.
+    This class handles loading, cleaning, and organizing data to align with
+    ECB's 6-week meeting intervals to better reflect the actual policy-making process.
     """
     
     def __init__(self, raw_data_path: str = 'Raw_Data', processed_data_path: str = 'Processed_Data'):
         """
-        Initialize the DataPreprocessor.
+        Initialize the ECBMeetingPreprocessor.
         
         Parameters:
         -----------
@@ -41,11 +44,12 @@ class DataPreprocessor:
         self.processed_data_path = processed_data_path
         self.data = {}
         self.scalers = {}
+        self.ecb_meetings = []
+        self.meeting_data = pd.DataFrame()
         
-        # Create processed data directory if it doesn't exist
         if not os.path.exists(processed_data_path):
             os.makedirs(processed_data_path)
-
+            
     def load_data(self) -> None:
         """Load all CSV files from the raw data directory and handle column naming."""
         logging.info("Loading data files...")
@@ -61,8 +65,6 @@ class DataPreprocessor:
         # Load bond yields
         self.data['bonds'] = pd.read_csv(os.path.join(self.raw_data_path, 'German_bondyield_data.csv'))
         self.data['bonds']['Dates'] = pd.to_datetime(self.data['bonds']['Dates'])
-        
-        # Rename bond yield columns for consistency
         self.data['bonds'] = self.data['bonds'].rename(columns={
             '10 Y Bond Yield': '10Y',
             '2 Y Bond Yield': '2Y',
@@ -73,8 +75,6 @@ class DataPreprocessor:
         # Load oil prices
         self.data['oil'] = pd.read_csv(os.path.join(self.raw_data_path, 'Brent_Oil_Prices_data.csv'))
         self.data['oil']['Dates'] = pd.to_datetime(self.data['oil']['Dates'])
-        
-        # Rename oil price column for consistency
         self.data['oil'] = self.data['oil'].rename(columns={
             'Oil Prices Brent': 'Brent Oil Price'
         })
@@ -82,104 +82,173 @@ class DataPreprocessor:
         # Load Fed Funds Rate
         self.data['fed'] = pd.read_csv(os.path.join(self.raw_data_path, 'Fed_Fund_Rate_data.csv'))
         self.data['fed']['Dates'] = pd.to_datetime(self.data['fed']['Dates'])
-        
-        # Rename Fed Funds Rate column for consistency
         self.data['fed'] = self.data['fed'].rename(columns={
             'Fed Funds Rate': 'Fed_Fund_Rate'
         })
         
         # Load GPR data
         self.data['gpr'] = pd.read_csv(os.path.join(self.raw_data_path, 'GPR_data.csv'))
-        # Convert month column to datetime
         self.data['gpr']['Date'] = pd.to_datetime(self.data['gpr']['month'], format='%d-%m-%Y')
         
-        # Load ECB Interest Rate data if available
+        # Load ECB Interest Rate data
         self.load_ecb_rate_data()
         
         logging.info("All data files loaded successfully")
-
+        
     def load_ecb_rate_data(self) -> None:
-        """Load ECB interest rate data from ECBDFR.csv if available."""
+        """
+        Load ECB interest rate data and create consistent 6-week meeting windows.
+        If there is any rate change within a 6-week window, it's marked as a change period.
+        Otherwise, it's considered a hold period.
+        """
         ecb_rates_path = os.path.join(self.raw_data_path, 'ECBDFR.csv')
         
         if os.path.exists(ecb_rates_path):
             logging.info("Loading ECB interest rate data...")
             
-            # Load the data
             ecb_rates_df = pd.read_csv(ecb_rates_path)
             
-            # Check if required columns exist
             if 'observation_date' in ecb_rates_df.columns and 'ECBDFR' in ecb_rates_df.columns:
-                # Ensure date column is in datetime format
                 ecb_rates_df['observation_date'] = pd.to_datetime(ecb_rates_df['observation_date'])
                 
-                # Rename columns for consistency
                 ecb_rates_df = ecb_rates_df.rename(columns={
                     'observation_date': 'Dates',
                     'ECBDFR': 'ECB_rate_actual'
                 })
                 
-                # Store in data dictionary
+                ecb_rates_df = ecb_rates_df.sort_values('Dates')
+                
+                ecb_rates_df['rate_change'] = ecb_rates_df['ECB_rate_actual'].diff()
+                rate_change_dates = ecb_rates_df[ecb_rates_df['rate_change'] != 0]['Dates'].tolist()
+                
+                if rate_change_dates:
+                    first_meeting = rate_change_dates[0]
+                    logging.info(f"First rate change detected on: {first_meeting}")
+                    
+                    self.create_consistent_meeting_schedule(first_meeting)
+                    self.identify_rate_change_meetings(ecb_rates_df)
+                else:
+                    first_meeting = pd.to_datetime('2000-02-04')
+                    logging.warning("No rate changes found. Using default first meeting date.")
+                    self.create_consistent_meeting_schedule(first_meeting)
+                
                 self.data['ecb_rates'] = ecb_rates_df
                 
                 logging.info(f"Loaded ECB rates data with {len(ecb_rates_df)} rows")
-                logging.info(f"Date range in ECB data: {ecb_rates_df['Dates'].min()} to {ecb_rates_df['Dates'].max()}")
+                logging.info(f"Created {len(self.ecb_meetings)} consistent 6-week meeting periods")
             else:
-                logging.warning("ECB interest rate data file missing required columns. Skipping.")
+                logging.warning("ECB interest rate data file missing required columns. Using default schedule.")
+                self.create_consistent_meeting_schedule(pd.to_datetime('2000-02-04'))
         else:
-            logging.warning(f"ECB interest rate data file not found at {ecb_rates_path}. Skipping.")
+            logging.warning(f"ECB interest rate data file not found at {ecb_rates_path}. Using default schedule.")
+            self.create_consistent_meeting_schedule(pd.to_datetime('2000-02-04'))
 
-    def validate_data(self) -> None:
-        """Validate data formats and types before processing."""
-        logging.info("Validating data...")
+    def create_consistent_meeting_schedule(self, start_date) -> None:
+        """
+        Create a consistent 6-week meeting schedule starting from the given date.
+        """
+        logging.info(f"Creating consistent 6-week ECB meeting schedule from {start_date}")
         
+        # Find the latest date in our data to set the end of the schedule
+        end_dates = []
         for dataset_name, df in self.data.items():
-            logging.info(f"Validating {dataset_name} dataset with columns: {df.columns.tolist()}")
+            date_col = 'Date' if 'Date' in df.columns else 'Dates'
+            if date_col in df.columns:
+                end_dates.append(df[date_col].max())
+        
+        last_date = max(end_dates) if end_dates else pd.to_datetime('2025-03-12')
+        
+        # Generate meetings every 6 weeks
+        meetings = [start_date]
+        current_date = start_date
+        
+        while current_date < last_date:
+            # Add 6 weeks (42 days) for the next meeting
+            current_date = current_date + timedelta(days=42)
+            meetings.append(current_date)
+        
+        self.ecb_meetings = meetings
+        logging.info(f"Created consistent schedule with {len(meetings)} meetings from {start_date} to {meetings[-1]}")
+        
+    def identify_rate_change_meetings(self, ecb_rates_df) -> None:
+        """
+        Identify which of the 6-week meeting periods had a rate change.
+        Stores this information in the meeting_changes data.
+        """
+        meeting_rate_changes = []
+        
+        # For each meeting period, check if there was a rate change
+        for i in range(len(self.ecb_meetings) - 1):
+            meeting_date = self.ecb_meetings[i]
+            next_meeting_date = self.ecb_meetings[i + 1]
             
-            # Check for required columns based on dataset
-            if dataset_name == 'macro':
-                required_cols = ['Date', 'Eurozone GDP Growth', 'CPI_Inflation_YoY', 'Core_CPI']
-            elif dataset_name == 'market':
-                required_cols = ['Dates', 'ECBRateFutures', 'EURUSD Exchange rate', 'EuroStoxx 50 (Equity Markets)']
-            elif dataset_name == 'bonds':
-                required_cols = ['Dates', '10Y', '2Y', '5Y', '1Y']
-            elif dataset_name == 'oil':
-                required_cols = ['Dates', 'Brent Oil Price']
-            elif dataset_name == 'fed':
-                required_cols = ['Dates', 'Fed_Fund_Rate']
-            elif dataset_name == 'gpr':
-                required_cols = ['Date', 'GPR', 'GPRC_DEU', 'GPRHC_USA']
-            elif dataset_name == 'ecb_rates':
-                required_cols = ['Dates', 'ECB_rate_actual']
-            else:
-                # For any other dataset, skip validation
-                continue
+            # Get the rate at this meeting
+            current_rate = ecb_rates_df[ecb_rates_df['Dates'] <= meeting_date]['ECB_rate_actual'].iloc[-1] if not ecb_rates_df[ecb_rates_df['Dates'] <= meeting_date].empty else 0
             
-            logging.info(f"Required columns for {dataset_name}: {required_cols}")
+            # Check for any rate changes in this period
+            period_data = ecb_rates_df[(ecb_rates_df['Dates'] > meeting_date) & 
+                                       (ecb_rates_df['Dates'] <= next_meeting_date)]
             
-            # Check if all required columns exist
-            missing_cols = [col for col in required_cols if col not in df.columns]
-            if missing_cols:
-                raise ValueError(f"Missing required columns in {dataset_name}: {missing_cols}")
+            rate_changed = False
+            next_rate_change = 0.0
             
-            # Check for non-numeric values in numeric columns
-            numeric_cols = df.select_dtypes(include=[np.number]).columns
-            logging.info(f"Numeric columns in {dataset_name}: {numeric_cols.tolist()}")
+            if not period_data.empty:
+                # Get the rate at the end of the period
+                end_period_rate = period_data['ECB_rate_actual'].iloc[-1]
+                next_rate_change = end_period_rate - current_rate
+                rate_changed = abs(next_rate_change) > 0
             
-            for col in numeric_cols:
-                if df[col].dtype not in [np.float64, np.int64]:
-                    raise ValueError(f"Column {col} in {dataset_name} should be numeric but is {df[col].dtype}")
+            meeting_rate_changes.append({
+                'Meeting_Date': meeting_date,
+                'ECB_rate': current_rate,
+                'Next_Change': next_rate_change,
+                'Rate_Changed': rate_changed
+            })
+        
+        # Add the last meeting (with no next change info)
+        if self.ecb_meetings:
+            last_meeting = self.ecb_meetings[-1]
+            last_rate = ecb_rates_df[ecb_rates_df['Dates'] <= last_meeting]['ECB_rate_actual'].iloc[-1] if not ecb_rates_df[ecb_rates_df['Dates'] <= last_meeting].empty else 0
             
-            logging.info(f"Data validation passed for {dataset_name}")
+            meeting_rate_changes.append({
+                'Meeting_Date': last_meeting,
+                'ECB_rate': last_rate,
+                'Next_Change': 0.0,
+                'Rate_Changed': False
+            })
+        
+        self.data['meeting_changes'] = pd.DataFrame(meeting_rate_changes)
+        logging.info(f"Identified rate changes for {len(meeting_rate_changes)} consistent meeting periods")
 
+    def generate_meeting_intervals(self) -> List[Tuple[datetime, datetime]]:
+        """
+        Generate time intervals between ECB meetings.
+        
+        Returns:
+        --------
+        List[Tuple[datetime, datetime]]
+            List of tuples with (start_date, end_date) for each interval
+        """
+        if not self.ecb_meetings:
+            raise ValueError("No ECB meeting dates available. Run load_ecb_rate_data first.")
+        
+        # Sort meeting dates to ensure chronological order
+        sorted_meetings = sorted(self.ecb_meetings)
+        
+        # Create intervals between meetings
+        meeting_intervals = []
+        for i in range(len(sorted_meetings) - 1):
+            start_date = sorted_meetings[i]
+            end_date = sorted_meetings[i+1] - timedelta(days=1)  # Exclude the next meeting date
+            meeting_intervals.append((start_date, end_date))
+        
+        return meeting_intervals
+        
     def handle_missing_data(self) -> None:
         """Handle missing values in all datasets with appropriate interpolation methods."""
         logging.info("Handling missing data...")
         
         for dataset_name, df in self.data.items():
-            # Identify datetime columns
-            datetime_cols = df.select_dtypes(include=['datetime64']).columns
-            
             # Forward fill first (including datetime columns)
             df.fillna(method='ffill', inplace=True)
             
@@ -197,7 +266,7 @@ class DataPreprocessor:
             
             self.data[dataset_name] = df
             logging.info(f"Missing data handled for {dataset_name}")
-
+            
     def create_yield_curve_features(self) -> None:
         """Create yield curve features from bond data including slopes, curvature and volatility."""
         logging.info("Creating yield curve features...")
@@ -217,7 +286,7 @@ class DataPreprocessor:
         
         self.data['bonds'] = bonds_df
         logging.info("Yield curve features created successfully")
-
+    
     def create_economic_indicators(self) -> None:
         """Create economic indicators from macro data including YoY changes and momentum indicators."""
         logging.info("Creating economic indicators...")
@@ -227,16 +296,18 @@ class DataPreprocessor:
         # Calculate YoY changes
         for col in ['Eurozone GDP Growth', 'CPI_Inflation_YoY', 'Core_CPI', 
                    'Industrial_Production', 'Retail_Sales', 'M3_Money_Supply']:
-            macro_df[f'{col}_YoY'] = macro_df[col].pct_change(periods=12) * 100
+            if col in macro_df.columns:
+                macro_df[f'{col}_YoY'] = macro_df[col].pct_change(periods=12) * 100
         
         # Calculate momentum indicators
         for col in ['Eurozone GDP Growth', 'CPI_Inflation_YoY', 'Core_CPI']:
-            macro_df[f'{col}_3m_change'] = macro_df[col].pct_change(periods=3) * 100
-            macro_df[f'{col}_6m_change'] = macro_df[col].pct_change(periods=6) * 100
+            if col in macro_df.columns:
+                macro_df[f'{col}_3m_change'] = macro_df[col].pct_change(periods=3) * 100
+                macro_df[f'{col}_6m_change'] = macro_df[col].pct_change(periods=6) * 100
         
         self.data['macro'] = macro_df
         logging.info("Economic indicators created successfully")
-
+    
     def create_market_indicators(self) -> None:
         """Create market indicators from market data including returns and volatility metrics."""
         logging.info("Creating market indicators...")
@@ -245,197 +316,190 @@ class DataPreprocessor:
         oil_df = self.data['oil']
         
         # Calculate returns and volatility for EuroStoxx 50
-        market_df['EuroStoxx_returns'] = market_df['EuroStoxx 50 (Equity Markets)'].pct_change()
-        market_df['EuroStoxx_volatility'] = market_df['EuroStoxx_returns'].rolling(window=30).std()
+        if 'EuroStoxx 50 (Equity Markets)' in market_df.columns:
+            market_df['EuroStoxx_returns'] = market_df['EuroStoxx 50 (Equity Markets)'].pct_change()
+            market_df['EuroStoxx_volatility'] = market_df['EuroStoxx_returns'].rolling(window=30).std()
         
         # Calculate EUR/USD volatility
-        market_df['EURUSD_volatility'] = market_df['EURUSD Exchange rate'].rolling(window=30).std()
+        if 'EURUSD Exchange rate' in market_df.columns:
+            market_df['EURUSD_volatility'] = market_df['EURUSD Exchange rate'].rolling(window=30).std()
         
         # Calculate oil price changes and volatility
-        oil_df['Oil_returns'] = oil_df['Brent Oil Price'].pct_change()
-        oil_df['Oil_volatility'] = oil_df['Oil_returns'].rolling(window=30).std()
+        if 'Brent Oil Price' in oil_df.columns:
+            oil_df['Oil_returns'] = oil_df['Brent Oil Price'].pct_change()
+            oil_df['Oil_volatility'] = oil_df['Oil_returns'].rolling(window=30).std()
         
         self.data['market'] = market_df
         self.data['oil'] = oil_df
         logging.info("Market indicators created successfully")
-
+        
     def create_policy_indicators(self) -> None:
-        """Create policy-related indicators such as rate spreads and rate changes."""
+        """Create policy-related indicators tailored to the ECB 6-week meeting schedule."""
         logging.info("Creating policy indicators...")
         
         # Calculate Fed Funds Rate spread vs ECB rate
-        self.data['fed']['Fed_ECB_spread'] = self.data['fed']['Fed_Fund_Rate'] - self.data['market']['ECBRateFutures']
+        if 'ecb_rates' in self.data and 'fed' in self.data:
+            # Get the Fed Fund Rate on ECB meeting days or closest day
+            fed_df = self.data['fed']
+            ecb_df = self.data['ecb_rates']
+            
+            # For each ECB meeting, find the corresponding Fed rate
+            meeting_fed_rates = []
+            for meeting_date in self.ecb_meetings:
+                # Find closest Fed rate date before or on meeting date
+                closest_date = fed_df[fed_df['Dates'] <= meeting_date]['Dates'].max()
+                if pd.notna(closest_date):
+                    fed_rate = fed_df[fed_df['Dates'] == closest_date]['Fed_Fund_Rate'].values[0]
+                    ecb_rate = ecb_df[ecb_df['Dates'] <= meeting_date]['ECB_rate_actual'].iloc[-1]
+                    meeting_fed_rates.append({
+                        'Meeting_Date': meeting_date,
+                        'Fed_Fund_Rate': fed_rate,
+                        'ECB_rate_actual': ecb_rate,
+                        'Fed_ECB_spread': fed_rate - ecb_rate
+                    })
+            
+            # Create a DataFrame with Fed-ECB spreads for each meeting
+            self.data['policy_spreads'] = pd.DataFrame(meeting_fed_rates)
+            logging.info(f"Created Fed-ECB rate spread data for {len(meeting_fed_rates)} meetings")
         
-        # Calculate policy rate changes
-        self.data['market']['ECB_rate_change'] = self.data['market']['ECBRateFutures'].diff()
-        self.data['market']['ECB_rate_acceleration'] = self.data['market']['ECB_rate_change'].diff()
+        # Use the meeting_changes data created during load_ecb_rate_data
+        # No need to recalculate rate changes here
         
         logging.info("Policy indicators created successfully")
-
-    def create_lag_features(self) -> None:
-        """Create lag features for relevant variables to capture temporal dynamics."""
-        logging.info("Creating lag features...")
         
-        # Market data lags (1-5 days)
-        market_df = self.data['market']
-        for col in ['ECBRateFutures', 'EURUSD Exchange rate', 'EuroStoxx 50 (Equity Markets)']:
-            for lag in range(1, 6):
-                market_df[f'{col}_lag_{lag}'] = market_df[col].shift(lag)
-        
-        # Macro data lags (1-3 months)
-        macro_df = self.data['macro']
-        for col in ['Eurozone GDP Growth', 'CPI_Inflation_YoY', 'Core_CPI']:
-            for lag in range(1, 4):
-                macro_df[f'{col}_lag_{lag}'] = macro_df[col].shift(lag)
-        
-        self.data['market'] = market_df
-        self.data['macro'] = macro_df
-        logging.info("Lag features created successfully")
-
-    def clean_data(self) -> None:
-        """Clean data by handling infinite values, outliers, and scaling large values."""
-        logging.info("Cleaning data...")
-        
-        for dataset_name, df in self.data.items():
-            # Replace infinite values with NaN
-            df.replace([np.inf, -np.inf], np.nan, inplace=True)
-            
-            # Handle percentage values (if they're too large)
-            percentage_cols = [col for col in df.columns if any(x in col.lower() for x in ['growth', 'inflation', 'change', 'returns', 'yoy'])]
-            for col in percentage_cols:
-                # Cap percentage values at 1000% (10.0) and -1000% (-10.0)
-                df[col] = df[col].clip(-10.0, 10.0)
-            
-            # Scale down very large monetary values
-            if dataset_name == 'macro' and 'M3_Money_Supply' in df.columns:
-                # Scale M3 Money Supply to millions
-                df['M3_Money_Supply'] = df['M3_Money_Supply'] / 1000000
-                logging.info("Scaled M3_Money_Supply to millions for easier handling")
-            
-            # Forward fill NaN values
-            df.fillna(method='ffill', inplace=True)
-            # Backward fill any remaining NaN values
-            df.fillna(method='bfill', inplace=True)
-            
-            self.data[dataset_name] = df
-            logging.info(f"Data cleaned for {dataset_name}")
-
-    def validate_clean_data(self) -> None:
-        """Validate that data is clean and ready for normalization."""
-        logging.info("Validating cleaned data...")
-        
-        for dataset_name, df in self.data.items():
-            # Check for infinite values
-            inf_cols = df.columns[df.isin([np.inf, -np.inf]).any()]
-            if len(inf_cols) > 0:
-                raise ValueError(f"Infinite values found in {dataset_name} columns: {inf_cols.tolist()}")
-            
-            # Check for NaN values
-            nan_cols = df.columns[df.isna().any()]
-            if len(nan_cols) > 0:
-                raise ValueError(f"NaN values found in {dataset_name} columns: {nan_cols.tolist()}")
-            
-            # Check for extremely large values (only for numeric columns)
-            # Skip the M3_Money_Supply check since we've scaled it down already
-            numeric_cols = df.select_dtypes(include=[np.number]).columns
-            exclude_cols = []
-            if dataset_name == 'macro':
-                # We've already scaled M3_Money_Supply so exclude it from the check
-                exclude_cols = ['M3_Money_Supply']
-            
-            check_cols = [col for col in numeric_cols if col not in exclude_cols]
-            large_vals = df[check_cols].abs().gt(1e6).any()
-            large_cols = [col for i, col in enumerate(check_cols) if large_vals.iloc[i] if i < len(large_vals)]
-            
-            if len(large_cols) > 0:
-                raise ValueError(f"Extremely large values found in {dataset_name} columns: {large_cols}")
-            
-            logging.info(f"Clean data validation passed for {dataset_name}")
-
-    def normalize_data(self) -> None:
-        """Normalize features using appropriate scalers for different data types."""
-        logging.info("Normalizing data...")
-        
-        # Use StandardScaler for most features
-        standard_scaler = StandardScaler()
-        
-        # Use MinMaxScaler for interest rates and yields
-        minmax_scaler = MinMaxScaler()
-        
-        # Normalize market data
-        market_cols = ['ECBRateFutures', 'EURUSD Exchange rate', 'EuroStoxx 50 (Equity Markets)']
-        self.data['market'][market_cols] = minmax_scaler.fit_transform(self.data['market'][market_cols])
-        
-        # Normalize bond yields
-        bond_cols = ['1Y', '2Y', '5Y', '10Y']
-        self.data['bonds'][bond_cols] = minmax_scaler.fit_transform(self.data['bonds'][bond_cols])
-        
-        # Normalize macro data - exclude percentage columns
-        macro_df = self.data['macro']
-        percentage_cols = [col for col in macro_df.columns if any(x in col.lower() for x in ['growth', 'inflation', 'change', 'yoy'])]
-        numeric_cols = macro_df.select_dtypes(include=[np.number]).columns
-        non_percentage_cols = [col for col in numeric_cols if col not in percentage_cols]
-        
-        # Normalize non-percentage columns
-        if non_percentage_cols:
-            macro_df[non_percentage_cols] = standard_scaler.fit_transform(macro_df[non_percentage_cols])
-        
-        # Normalize percentage columns separately
-        if percentage_cols:
-            macro_df[percentage_cols] = macro_df[percentage_cols].clip(-10.0, 10.0) / 10.0
-        
-        self.data['macro'] = macro_df
-        logging.info("Data normalization completed")
-
-    def create_ecb_rate_features(self, final_df: pd.DataFrame) -> pd.DataFrame:
+    def aggregate_by_meeting_interval(self) -> None:
         """
-        Create additional features from the ECB interest rate data.
-        
-        Parameters:
-        -----------
-        final_df : pd.DataFrame
-            The combined dataframe with all datasets
-            
-        Returns:
-        --------
-        pd.DataFrame
-            The dataframe with added ECB rate features
+        Aggregate data by ECB meeting intervals (6-week periods).
+        This creates a dataset where each row represents one 6-week interval between meetings.
         """
-        if 'ecb_rates' not in self.data:
-            logging.warning("ECB interest rate data not available. Skipping ECB rate feature creation.")
-            return final_df
+        logging.info("Aggregating data by ECB meeting intervals...")
+        
+        # Generate meeting intervals
+        meeting_intervals = self.generate_meeting_intervals()
+        
+        # Create combined base dataframe with all data
+        combined_df = self.combine_datasets()
+        
+        # List to store aggregated data for each meeting interval
+        meeting_aggregated_data = []
+        
+        for interval_idx, (start_date, end_date) in enumerate(meeting_intervals):
+            # Filter data for this interval
+            interval_data = combined_df[(combined_df['Dates'] >= start_date) & 
+                                        (combined_df['Dates'] <= end_date)]
             
-        logging.info("Creating ECB interest rate features...")
+            if interval_data.empty:
+                logging.warning(f"No data for interval {start_date} to {end_date}. Skipping.")
+                continue
+            
+            # Get the meeting date (start of the interval)
+            meeting_date = start_date
+            
+            # Determine target (next meeting's decision)
+            next_meeting_idx = interval_idx + 1
+            if next_meeting_idx < len(self.ecb_meetings):
+                next_meeting_date = self.ecb_meetings[next_meeting_idx]
+                
+                # Get the rate change at the next meeting
+                if 'meeting_changes' in self.data:
+                    next_change = self.data['meeting_changes'][
+                        self.data['meeting_changes']['Meeting_Date'] == next_meeting_date
+                    ]['Next_Change'].values
+                    
+                    rate_change = next_change[0] if len(next_change) > 0 else 0.0
+                else:
+                    # Fallback if meeting changes data unavailable
+                    if 'ecb_rates' in self.data:
+                        ecb_df = self.data['ecb_rates']
+                        current_rate = ecb_df[ecb_df['Dates'] <= meeting_date]['ECB_rate_actual'].iloc[-1]
+                        next_rate = ecb_df[ecb_df['Dates'] <= next_meeting_date]['ECB_rate_actual'].iloc[-1]
+                        rate_change = next_rate - current_rate
+                    else:
+                        rate_change = 0.0
+            else:
+                # No next meeting (last interval)
+                rate_change = 0.0
+            
+            # Aggregate features for this interval
+            agg_data = {
+                'Meeting_Date': meeting_date,
+                'Interval_Start': start_date,
+                'Interval_End': end_date,
+                'Next_Rate_Change': rate_change,
+            }
+            
+            # Aggregate numerical features by mean, min, max, std
+            numeric_cols = interval_data.select_dtypes(include=[np.number]).columns
+            for col in numeric_cols:
+                if col != 'Dates':  # Skip date columns
+                    agg_data[f'{col}_mean'] = interval_data[col].mean()
+                    agg_data[f'{col}_min'] = interval_data[col].min()
+                    agg_data[f'{col}_max'] = interval_data[col].max()
+                    agg_data[f'{col}_std'] = interval_data[col].std()
+                    
+                    # For rate-related features, also capture the end of period value
+                    if any(term in col.lower() for term in ['rate', 'yield', 'inflation', 'gdp']):
+                        end_value = interval_data.loc[interval_data['Dates'].idxmax(), col]
+                        agg_data[f'{col}_end'] = end_value
+            
+            meeting_aggregated_data.append(agg_data)
         
-        # Merge the ECB rates data with the final dataframe
-        merged_df = pd.merge_asof(
-            final_df,
-            self.data['ecb_rates'],
-            on='Dates',
-            direction='backward'
-        )
+        # Convert to DataFrame
+        self.meeting_data = pd.DataFrame(meeting_aggregated_data)
         
-        # Create lag features for ECB actual rates (for use as predictors)
-        for lag in range(1, 6):
-            merged_df[f'ECB_rate_actual_lag_{lag}'] = merged_df['ECB_rate_actual'].shift(lag)
+        logging.info(f"Created aggregated dataset with {len(self.meeting_data)} meeting intervals")
         
-        # Create a feature for the difference between actual and futures rates
-        merged_df['ECB_actual_futures_diff'] = merged_df['ECB_rate_actual'] - merged_df['ECBRateFutures']
+    def clean_meeting_data(self) -> None:
+        """Clean meeting data by handling infinite values, outliers, and other issues."""
+        logging.info("Cleaning meeting data...")
         
-        # Create a feature for rate changes and trend
-        merged_df['ECB_rate_actual_change'] = merged_df['ECB_rate_actual'].diff()
-        merged_df['ECB_rate_actual_trend'] = np.sign(merged_df['ECB_rate_actual'].diff().rolling(window=3).sum())
+        if self.meeting_data.empty:
+            raise ValueError("Meeting data is empty. Run aggregate_by_meeting_interval first.")
         
-        logging.info("ECB interest rate features created successfully")
+        # Identify date columns
+        date_cols = ['Meeting_Date', 'Interval_Start', 'Interval_End']
         
-        # Display summary statistics for verification
-        logging.info("Summary of ECB rate data:")
-        logging.info(f"Min: {merged_df['ECB_rate_actual'].min()}")
-        logging.info(f"Max: {merged_df['ECB_rate_actual'].max()}")
-        logging.info(f"Mean: {merged_df['ECB_rate_actual'].mean()}")
+        # Get all numeric columns
+        numeric_cols = self.meeting_data.select_dtypes(include=[np.number]).columns
         
-        return merged_df
-
+        # Replace infinite values with NaN
+        self.meeting_data.replace([np.inf, -np.inf], np.nan, inplace=True)
+        
+        # For each numeric column, handle outliers and cap extreme values
+        for col in numeric_cols:
+            # Ignore date columns and columns with all NaN
+            if col in date_cols or self.meeting_data[col].isna().all():
+                continue
+                
+            # Calculate reasonable bounds for the data (3 std from mean)
+            col_mean = self.meeting_data[col].mean()
+            col_std = self.meeting_data[col].std()
+            
+            if pd.notna(col_mean) and pd.notna(col_std) and col_std > 0:
+                lower_bound = col_mean - 5 * col_std
+                upper_bound = col_mean + 5 * col_std
+                
+                # Cap values outside these bounds
+                self.meeting_data[col] = self.meeting_data[col].clip(lower_bound, upper_bound)
+            
+            # Fill remaining NaN with median (more robust than mean)
+            if self.meeting_data[col].isna().any():
+                self.meeting_data[col].fillna(self.meeting_data[col].median(), inplace=True)
+        
+        # Log columns with remaining issues
+        problematic_cols = []
+        for col in numeric_cols:
+            if self.meeting_data[col].isna().any() or np.isinf(self.meeting_data[col]).any():
+                problematic_cols.append(col)
+                
+        if problematic_cols:
+            logging.warning(f"Columns with remaining NA or infinite values: {problematic_cols}")
+            # Drop problematic columns if they can't be fixed
+            self.meeting_data.drop(columns=problematic_cols, inplace=True)
+            logging.warning(f"Dropped {len(problematic_cols)} problematic columns")
+        
+        logging.info("Meeting data cleaned successfully")
+    
     def combine_datasets(self) -> pd.DataFrame:
         """Combine all processed datasets into a single DataFrame using time-based alignment."""
         logging.info("Combining datasets...")
@@ -488,58 +552,108 @@ class DataPreprocessor:
             direction='backward'
         )
         
-        # Create target variable (ECB rate changes)
-        final_df['ECB_rate_change'] = final_df['ECBRateFutures'].diff()
-        
-        # Add ECB interest rate features if available
-        final_df = self.create_ecb_rate_features(final_df)
+        # Add ECB interest rate data if available
+        if 'ecb_rates' in self.data:
+            final_df = pd.merge_asof(
+                final_df,
+                self.data['ecb_rates'],
+                left_on='Dates',
+                right_on='Dates',
+                direction='backward'
+            )
         
         # Drop rows with missing values
         final_df.dropna(inplace=True)
         
         logging.info(f"Datasets combined successfully with {len(final_df)} rows")
         return final_df
-
-    def save_processed_data(self, df: pd.DataFrame) -> None:
-        """Save the processed dataset to CSV file."""
-        # Create a backup of any existing processed data
-        if os.path.exists(os.path.join(self.processed_data_path, 'processed_data.csv')):
-            backup_path = os.path.join(
-                self.processed_data_path, 
-                f'processed_data_backup_{datetime.now().strftime("%Y%m%d")}.csv'
-            )
-            os.rename(
-                os.path.join(self.processed_data_path, 'processed_data.csv'),
-                backup_path
-            )
-            logging.info(f"Created backup of previous processed data at {backup_path}")
+    
+    def normalize_meeting_data(self) -> None:
+        """Normalize the meeting aggregated data for machine learning models."""
+        logging.info("Normalizing meeting data...")
         
-        # Save the new processed data
-        output_path = os.path.join(self.processed_data_path, 'processed_data.csv')
-        df.to_csv(output_path, index=False)
-        logging.info(f"Processed data saved to {output_path}")
-
+        if self.meeting_data.empty:
+            raise ValueError("Meeting data is empty. Run aggregate_by_meeting_interval first.")
+        
+        # Identify columns to normalize (exclude date columns and target)
+        date_cols = ['Meeting_Date', 'Interval_Start', 'Interval_End']
+        target_col = 'Next_Rate_Change'
+        
+        # Get all numeric columns except target
+        numeric_cols = self.meeting_data.select_dtypes(include=[np.number]).columns
+        normalize_cols = [col for col in numeric_cols if col != target_col]
+        
+        # Use StandardScaler for most features
+        standard_scaler = StandardScaler()
+        
+        # Normalize the data
+        if normalize_cols:
+            self.meeting_data[normalize_cols] = standard_scaler.fit_transform(self.meeting_data[normalize_cols])
+            self.scalers['meeting_data'] = standard_scaler
+        
+        logging.info("Meeting data normalization completed")
+    
+    def save_processed_data(self) -> None:
+        """Save only the processed meeting data CSV file."""
+        logging.info("Saving processed data...")
+        
+        if self.meeting_data is None or self.meeting_data.empty:
+            raise ValueError("No meeting data to save. Run the pipeline first.")
+        
+        # Create directory if it doesn't exist
+        os.makedirs(self.processed_data_path, exist_ok=True)
+        
+        # Save only the meeting data
+        try:
+            meeting_data_path = os.path.join(self.processed_data_path, 'ecb_meeting_data.csv')
+            self.meeting_data.to_csv(meeting_data_path, index=False)
+            logging.info(f"Meeting data saved to {meeting_data_path}")
+        except Exception as e:
+            logging.error(f"Error saving processed data: {str(e)}")
+            
+            # Try to save to a backup file
+            try:
+                backup_filename = f"ecb_meeting_data_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+                emergency_path = os.path.join(
+                    self.processed_data_path, 
+                    backup_filename
+                )
+                self.meeting_data.to_csv(emergency_path, index=False)
+                logging.info(f"Processed data saved to emergency file: {emergency_path}")
+            except Exception as e2:
+                logging.error(f"Failed to save even to emergency file: {str(e2)}")
+                raise
+    
     def run_pipeline(self) -> None:
         """Run the complete preprocessing pipeline in sequence."""
         try:
+            logging.info("Starting ECB meeting-based preprocessing pipeline...")
+            
+            # Load and clean the data
             self.load_data()
-            self.validate_data()
             self.handle_missing_data()
+            
+            # Create features
             self.create_yield_curve_features()
             self.create_economic_indicators()
             self.create_market_indicators()
             self.create_policy_indicators()
-            self.create_lag_features()
-            self.clean_data()
-            self.validate_clean_data()
-            self.normalize_data()
-            final_df = self.combine_datasets()
-            self.save_processed_data(final_df)
-            logging.info("Preprocessing pipeline completed successfully")
+            
+            # Aggregate by meeting interval
+            self.aggregate_by_meeting_interval()
+            
+            # Clean and normalize the meeting data
+            self.clean_meeting_data()
+            self.normalize_meeting_data()
+            
+            # Save the processed data
+            self.save_processed_data()
+            
+            logging.info("ECB meeting-based preprocessing pipeline completed successfully")
         except Exception as e:
             logging.error(f"Error in preprocessing pipeline: {str(e)}")
             raise
 
 if __name__ == "__main__":
-    preprocessor = DataPreprocessor()
+    preprocessor = ECBMeetingPreprocessor()
     preprocessor.run_pipeline() 
