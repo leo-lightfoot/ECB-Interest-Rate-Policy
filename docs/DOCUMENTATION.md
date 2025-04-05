@@ -16,12 +16,12 @@ This document provides comprehensive details about the ECB Interest Rate Policy 
 
 ## Project Overview
 
-The European Central Bank (ECB) interest rate policy has significant impacts on the European economy and financial markets. This project builds machine learning models to predict ECB rate decisions (hike, hold, or cut) based on various economic and financial indicators.
+The European Central Bank (ECB) interest rate policy has significant impacts on the European economy and financial markets. This project aims to build machine learning models to predict ECB rate decisions (hike, hold, or cut) based on various economic and financial indicators.
 
 Key components:
 - Data collection and preprocessing from multiple sources
 - Feature engineering to create relevant predictors
-- Multiple modeling approaches to address class imbalance
+- Multiple modeling approaches to address class imbalance nad period imbalances
 - Specialized analysis for crisis periods
 - Comprehensive model evaluation and visualization
 - Interactive Streamlit dashboard for predictions
@@ -59,7 +59,6 @@ ECB-Interest-Rate-Policy/
 ├── model_training.py        # Model training and evaluation script
 ├── app.py                   # Streamlit dashboard application
 ├── Deploy/                  # Deployment utilities
-│   └── setup.py             # Setup script for environment verification
 └── requirements.txt         # Project dependencies
 ```
 
@@ -149,16 +148,11 @@ Multiple modeling approaches implemented to address class imbalance in rate deci
 ### Model Training Process
 
 The model training script:
-1. Performs hyperparameter tuning using RandomizedSearchCV
+1. Divides data into train(80%) and test(20%) set using Stratified Kfold techniques to prevent class imbalance.
 2. Trains each model with optimized parameters
-3. Evaluates performance on test data
-4. Saves the trained model and performance metrics
-
-### Custom Enhancements
-1. Custom probability thresholds for SMOTE models to further improve performance
-2. Two-stage prediction approach to handle the hierarchical nature of rate decisions
-3. Crisis-period weighting to account for different ECB behavior during economic crises
-4. Extensive SHAP analysis to explain model decisions
+3. Performs hyperparameter tuning using RandomizedSearchCV
+4. Evaluates performance on test data
+5. Saves the trained model and performance metrics
 
 ## Model Evaluation
 
@@ -200,17 +194,6 @@ After training all models, the script:
 
 ECB rate decisions show significant class imbalance with 'Hold' decisions being much more common than 'Hike' or 'Cut'. Approaches to address this:
 
-### Minority Class Enhancement Techniques
-- SMOTE Oversampling: Best overall performance with F1 scores of 52.6% for Rate Cut and 44.7% for Rate Hike
-- Custom Probability Thresholds: Improved Rate Hike detection (F1: 45.2%)
-- Class-Weighted Learning: Balanced precision and recall
-- Two-Stage Models: Improved specificity for detecting rate changes
-
-### Crisis Period Analysis
-- Custom modeling for different economic regimes
-- Different feature importance patterns during crisis vs. normal periods
-- Specialized weighting based on crisis context
-
 ## Installation and Usage
 
 ### Requirements
@@ -218,9 +201,10 @@ ECB rate decisions show significant class imbalance with 'Hold' decisions being 
 - Required packages listed in requirements.txt
 
 ### Setup
+
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/ECB-Interest-Rate-Policy.git
+git clone https://github.com/leo-lightfoot/ECB-Interest-Rate-Policy.git
 cd ECB-Interest-Rate-Policy
 
 # Install dependencies
@@ -239,139 +223,9 @@ python model_training.py
 - `results/model_performance_summary.csv`: Comparison of all model approaches
 - `plots/`: Visualizations of model performance and feature importance
 
-## Streamlit Dashboard Deployment
+## Streamlit Dashboard
 
-The project includes a Streamlit dashboard for interactive model predictions:
-
-```bash
-# Run the Streamlit app locally
-streamlit run app.py
-```
-
-### Dashboard Features
-- Interactive prediction of ECB rate decisions based on economic indicators
-- Option to use historical meeting data or input custom values
-- Visualization of prediction probabilities
-- Feature importance analysis
-- Educational content on the model approach and limitations
-
-### Deployment on Streamlit Cloud
-
-#### Prerequisites
-
-1. A GitHub account
-2. The project repository uploaded to GitHub (public)
-3. A Streamlit Cloud account (free tier available)
-
-#### File Structure Check
-
-Ensure your repository has the following essential files and structure:
-
-```
-ECB-Interest-Rate-Policy/
-├── app.py                   # Streamlit application
-├── requirements.txt         # Dependencies
-├── .streamlit/              # Streamlit configuration
-│   └── config.toml          # Streamlit settings
-├── models/                  # Trained models
-│   ├── feature_names.json   # Feature names for the model
-│   └── smote/               # SMOTE model directory
-│       └── smote_rf.pkl     # Random Forest model with SMOTE
-└── Processed_Data/          # Processed data for the app
-    └── ecb_meeting_data.csv # Meeting data for examples
-```
-
-#### Preparation Steps
-
-1. **Run setup script to verify everything is in order**:
-   ```bash
-   python Deploy/setup.py
-   ```
-
-2. **Test the Streamlit app locally**:
-   ```bash
-   streamlit run app.py
-   ```
-
-3. **Make sure all necessary files are committed to your repository**:
-   ```bash
-   git add .
-   git commit -m "Prepare for Streamlit deployment"
-   git push origin main
-   ```
-
-#### Deployment Steps
-
-1. **Create a Streamlit Cloud Account**:
-   - Go to [Streamlit Cloud](https://streamlit.io/cloud)
-   - Sign in with your GitHub account
-   - Authorize Streamlit to access your repositories
-
-2. **Deploy the App**:
-   - Click "New app" in the Streamlit Cloud dashboard
-   - Select your GitHub repository from the list
-   - Choose the main branch (or whichever branch you want to deploy)
-   - Set the app file path to `app.py`
-   - Specify advanced settings if needed (memory, etc.)
-   - Click "Deploy"
-
-3. **Wait for Deployment**:
-   - Streamlit Cloud will build and deploy your app
-   - This may take a few minutes
-   - You can monitor the progress in the Streamlit Cloud dashboard
-
-4. **Access Your App**:
-   - Once deployed, your app will be available at a URL like:
-     `https://yourusername-ecb-interest-rate-policy-streamlit-app.streamlit.app`
-   - This URL is public and can be shared with others
-
-#### Deployment Troubleshooting
-
-If your app fails to deploy, check the following:
-
-1. **Check the build logs in Streamlit Cloud** for error messages
-
-2. **Model file size issues**:
-   - Streamlit Cloud has file size limitations
-   - If your model is too large, consider:
-     - Reducing model complexity
-     - Using a different model format
-     - Storing the model in external storage
-
-3. **Memory/Resource limitations**:
-   - If your app crashes due to memory issues:
-     - Optimize your code for memory usage
-     - Upgrade to a plan with more resources
-
-4. **Package conflicts**:
-   - If you have package compatibility issues:
-     - Specify exact versions in requirements.txt
-     - Remove unnecessary packages
-
-#### Updating Your Deployed App
-
-Any changes pushed to your GitHub repository will automatically trigger a redeployment of your app.
-
-1. **Make changes to your code locally**
-2. **Test the changes locally with `streamlit run app.py`**
-3. **Commit and push the changes to GitHub**
-4. **Streamlit Cloud will automatically redeploy your app**
-
-#### Monitoring and Analytics
-
-Streamlit Cloud provides basic analytics for your app:
-
-1. **View app analytics in the Streamlit Cloud dashboard**
-2. **Monitor resource usage and performance**
-3. **Check error logs if issues occur**
-
-#### Custom Domain (Optional)
-
-For professional deployments, you might want to use a custom domain:
-
-1. **Upgrade to a paid Streamlit Cloud plan**
-2. **Configure DNS settings for your domain**
-3. **Add the custom domain in Streamlit Cloud settings**
+You can access the dashboard at https://github.com/leo-lightfoot/ECB-Interest-Rate-Policy/blob/main/README.md
 
 ## Future Development Roadmap
 

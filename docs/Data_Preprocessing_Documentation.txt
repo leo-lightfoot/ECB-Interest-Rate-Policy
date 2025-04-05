@@ -1,4 +1,4 @@
-# ECB Interest Rate Policy Prediction Preprocessing Pipeline
+# Data Preprocessing Pipeline
 
 This document provides a detailed explanation of the ECB Meeting Preprocessor, a Python class designed to prepare data for predicting the European Central Bank's interest rate policy decisions.
 
@@ -6,10 +6,10 @@ This document provides a detailed explanation of the ECB Meeting Preprocessor, a
 
 The preprocessor implements a specialized pipeline that organizes economic and financial data around the ECB's 6-week meeting schedule. This approach better reflects the actual policy-making process, as the ECB makes monetary policy decisions at regular meetings rather than at fixed calendar intervals.
 
-## Data Sources
+## Data Sources (Bloomberg, ECB Website, FRED and GPR Index)
 
 The pipeline handles multiple data sources:
-
+>This Data is available in Raw_Data folder
 1. **Macro Data**: Economic indicators like GDP, inflation (CPI), retail sales, industrial production, and money supply figures.
 2. **Market Data**: Financial market data such as the EuroStoxx 50 index and EUR/USD exchange rates.
 3. **Bond Yields**: German government bond yields at different maturities (1Y, 2Y, 5Y, 10Y).

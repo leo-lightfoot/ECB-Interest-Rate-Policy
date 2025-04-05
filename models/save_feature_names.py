@@ -2,8 +2,8 @@ import joblib
 import json
 import os
 
-# Path to the SMOTE model (assumed to be the main model for deployment)
-model_path = os.path.join('smote', 'smote_rf.pkl')
+# Path to the SMOTE model (using absolute path)
+model_path = os.path.join('models', 'smote', 'smote_rf.pkl')
 
 # Check if the model file exists
 if os.path.exists(model_path):
@@ -15,8 +15,8 @@ if os.path.exists(model_path):
         feature_names = model.feature_names_in_.tolist()
         print(f"Extracted {len(feature_names)} feature names")
         
-        # Save feature names to JSON
-        output_path = os.path.join('feature_names.json')
+        # Save feature names to JSON in the models directory
+        output_path = os.path.join('models', 'feature_names.json')
         with open(output_path, 'w') as f:
             json.dump(feature_names, f)
         
