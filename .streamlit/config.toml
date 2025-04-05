@@ -9,12 +9,14 @@ font = "sans serif"
 maxUploadSize = 50
 enableCORS = true
 enableXsrfProtection = true
+runOnSave = true
 
 [browser]
 gatherUsageStats = false
 
 [global]
 developmentMode = false
+pythonVersion = "3.9"
 
 [deprecation]
 showPyplotGlobalUse = false 
