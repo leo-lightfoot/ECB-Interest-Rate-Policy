@@ -982,6 +982,8 @@ def main():
     
     with tab4:
         st.header("Documentation")
+        st.subheader("Project Repository")
+        st.markdown("The entire data, model and project can be found at [GitHub](https://github.com/leo-lightfoot/ECB-Interest-Rate-Policy")
         
         with st.expander("Data Sources", expanded=True):
             st.markdown("""
@@ -1050,7 +1052,7 @@ def main():
             #### Data Preprocessing
             The data preprocessing pipeline handles the collection, cleaning, and transformation of economic indicators and ECB meeting data.
             
-            [View Data Preprocessing Code](https://github.com/YourUsername/ECB-Interest-Rate-Policy/blob/main/Data_Preprocessing.py)
+            [View Data Preprocessing Code](https://github.com/leo-lightfoot/ECB-Interest-Rate-Policy/blob/main/Data_Preprocessing.py)
             
             ```python
             # Key steps in data preprocessing:
@@ -1064,7 +1066,7 @@ def main():
             #### Model Training & Analysis
             The model training script contains the implementation of all modeling approaches and performance evaluation.
             
-            [View Model Training Code](https://github.com/YourUsername/ECB-Interest-Rate-Policy/blob/main/model_training.py)
+            [View Model Training Code](https://github.com/leo-lightfoot/ECB-Interest-Rate-Policy/blob/main/model_training.py)
             
             ```python
             # Key components of model training:
@@ -1077,9 +1079,9 @@ def main():
             #### Results and Documentation
             For detailed analysis and documentation of the models, including performance metrics and feature importance analysis:
             
-            [View Results Directory](https://github.com/YourUsername/ECB-Interest-Rate-Policy/tree/main/results)
+            [View Results Directory](https://github.com/leo-lightfoot/ECB-Interest-Rate-Policy/tree/main/results)
             
-            [Project README](https://github.com/YourUsername/ECB-Interest-Rate-Policy/blob/main/README.md)
+            [Project README](https://github.com/leo-lightfoot/ECB-Interest-Rate-Policy/blob/main/README.md)
             """)
 
 if __name__ == "__main__":
