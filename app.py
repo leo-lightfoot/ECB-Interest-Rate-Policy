@@ -493,6 +493,10 @@ def display_metric(label, value, unit=""):
 
 # Main app
 def main():
+    # Initialize session state variables
+    if 'input_method' not in st.session_state:
+        st.session_state['input_method'] = "Use sample data from past meetings"
+        
     st.title("ECB Interest Rate Policy Predictor")
     
     # Load model and feature names
@@ -512,7 +516,9 @@ def main():
         # Option to use sample data or manual input
         input_method = st.radio(
             "Select input method",
-            ["Use sample data from past meetings", "Manual input"]
+            ["Use sample data from past meetings", "Manual input"],
+            index=0,
+            key="input_method"
         )
         
         input_data = {}
@@ -896,7 +902,7 @@ def main():
         """, unsafe_allow_html=True)
         
         model_options = ["SMOTE", "Two_Stage", "Weighted", "Crisis-Aware", "Standard"]
-        selected_model = st.selectbox("", model_options)
+        selected_model = st.selectbox("Model", model_options, label_visibility="collapsed")
         
         # Display performance metrics for selected model in a clean container
         st.markdown(f"""
@@ -912,7 +918,7 @@ def main():
             # Load confusion matrix for selected model
             cm_img = load_confusion_matrix(selected_model)
             if cm_img:
-                st.image(cm_img, caption=f"Confusion Matrix - {selected_model} Model", use_column_width=True)
+                st.image(cm_img, caption=f"Confusion Matrix - {selected_model} Model", use_container_width=True)
             else:
                 st.warning(f"Confusion matrix for {selected_model} model not found.")
         
@@ -960,7 +966,7 @@ def main():
         for model_name in model_options:
             cm_img = load_confusion_matrix(model_name)
             if cm_img:
-                st.image(cm_img, caption=f"{model_name} Model", use_column_width=True)
+                st.image(cm_img, caption=f"{model_name} Model", use_container_width=True)
         
         # Show detailed performance metrics in a table
         with st.expander("Detailed Model Performance Metrics Table", expanded=False):
