@@ -15,8 +15,4 @@ runOnSave = true
 gatherUsageStats = false
 
 [global]
-developmentMode = false
-pythonVersion = "3.9"
-
-[deprecation]
-showPyplotGlobalUse = false 
+developmentMode = false 
