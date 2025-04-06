@@ -989,7 +989,7 @@ def main():
     with tab4:
         st.header("Documentation")
         st.subheader("Project Repository")
-        st.markdown("The entire data, model and project can be found at [GitHub](https://github.com/leo-lightfoot/ECB-Interest-Rate-Policy")
+        st.markdown("The entire data, model and project can be found at [GitHub](https://github.com/leo-lightfoot/ECB-Interest-Rate-Policy)")
         
         with st.expander("Data Sources", expanded=True):
             st.markdown("""
